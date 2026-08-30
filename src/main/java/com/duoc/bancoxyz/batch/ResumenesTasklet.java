@@ -14,6 +14,7 @@ import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.StepContribution;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.infrastructure.repeat.RepeatStatus;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -41,40 +42,52 @@ public class ResumenesTasklet implements Tasklet {
     }
 
     private void crearTablasResumen() {
-        jdbcTemplate.execute("""
-                CREATE TABLE IF NOT EXISTS estado_cuenta_resumen (
-                    id_cuenta BIGINT,
-                    anio BIGINT,
-                    numero_depositos BIGINT,
-                    numero_retiros BIGINT,
-                    numero_compras BIGINT,
-                    total_ingresos BIGINT,
-                    total_egresos BIGINT,
-                    saldo DECIMAL(19,2)
+        crearTablaSiNoExiste("""
+                CREATE TABLE estado_cuenta_resumen (
+                    id_cuenta NUMBER(19),
+                    anio NUMBER(19),
+                    numero_depositos NUMBER(19),
+                    numero_retiros NUMBER(19),
+                    numero_compras NUMBER(19),
+                    total_ingresos NUMBER(19),
+                    total_egresos NUMBER(19),
+                    saldo NUMBER(19,2)
                 )
                 """);
 
-        jdbcTemplate.execute("""
-                CREATE TABLE IF NOT EXISTS interes_mensual_resumen (
-                    id_cuenta BIGINT,
-                    mes VARCHAR(20),
-                    anio VARCHAR(10),
-                    interes DECIMAL(19,2),
-                    saldo_final DECIMAL(19,2)
+        crearTablaSiNoExiste("""
+                CREATE TABLE interes_mensual_resumen (
+                    id_cuenta NUMBER(19),
+                    mes VARCHAR2(20),
+                    anio VARCHAR2(10),
+                    interes NUMBER(19,2),
+                    saldo_final NUMBER(19,2)
                 )
                 """);
 
-        jdbcTemplate.execute("""
-                CREATE TABLE IF NOT EXISTS resumen_transacciones (
-                    id_resumen BIGINT,
+        crearTablaSiNoExiste("""
+                CREATE TABLE resumen_transacciones (
+                    id_resumen NUMBER(19),
                     fecha DATE,
-                    transacciones_aprobadas BIGINT,
-                    transacciones_invalidas BIGINT,
-                    transacciones_debito BIGINT,
-                    transacciones_credito BIGINT,
-                    monto_total DECIMAL(19,2)
+                    transacciones_aprobadas NUMBER(19),
+                    transacciones_invalidas NUMBER(19),
+                    transacciones_debito NUMBER(19),
+                    transacciones_credito NUMBER(19),
+                    monto_total NUMBER(19,2)
                 )
                 """);
+    }
+
+    private void crearTablaSiNoExiste(String ddl) {
+        try {
+            jdbcTemplate.execute(ddl);
+        } catch (DataAccessException ex) {
+            Throwable root = ex.getMostSpecificCause();
+            String message = root.getMessage() == null ? "" : root.getMessage();
+            if (!message.contains("ORA-00955") && !message.toLowerCase(Locale.ROOT).contains("already exists")) {
+                throw ex;
+            }
+        }
     }
 
     private void limpiarTablasResumen() {
@@ -165,6 +178,7 @@ public class ResumenesTasklet implements Tasklet {
                     resumen.getIdResumen(),
                     resumen.getFecha(),
                     resumen.getTransaccionesAprobadas(),
+                    0L,
                     resumen.getTransaccionesDebito(),
                     resumen.getTransaccionesCredito(),
                     resumen.getMontoTotal());
