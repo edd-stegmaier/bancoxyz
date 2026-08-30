@@ -1,0 +1,8 @@
+ORACLE_WALLET_DIR=/ruta/absoluta/al/wallet_descomprimido
+ORACLE_TNS_ALIAS=nombredb_high
+ORACLE_USERNAME=ADMIN
+ORACLE_PASSWORD=cambia-esto
+
+spring.datasource.url=jdbc:oracle:thin:@${ORACLE_TNS_ALIAS}?TNS_ADMIN=${ORACLE_WALLET_DIR}
+spring.datasource.username=${ORACLE_USERNAME}
+spring.datasource.password=${ORACLE_PASSWORD}

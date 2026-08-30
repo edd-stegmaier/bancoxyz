@@ -28,12 +28,9 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
+		<oracle.jdbc.version>23.26.0.0</oracle.jdbc.version>
 	</properties>
 	<dependencies>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-h2console</artifactId>
-		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-batch</artifactId>
@@ -47,10 +44,24 @@
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
 		</dependency>
 
+		<!-- JDBC 23ai + companion jars para wallet mTLS (oraclepki, etc.) -->
+		<dependency>
+			<groupId>com.oracle.database.jdbc</groupId>
+			<artifactId>ojdbc17-production</artifactId>
+			<version>${oracle.jdbc.version}</version>
+			<type>pom</type>
+		</dependency>
+
+		<!-- H2 solo para tests y perfil local de desarrollo -->
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
 			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-h2console</artifactId>
+			<optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>org.projectlombok</groupId>
