@@ -29,6 +29,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import com.duoc.bancoxyz.dto.*;
 import com.duoc.bancoxyz.model.*;
 
+
 @Configuration
 public class BatchConfig {
 
@@ -167,7 +168,7 @@ public class BatchConfig {
     @Bean
     public Step resumenesStep(JobRepository jobRepository,
             PlatformTransactionManager transactionManager,
-            ResumenesH2Tasklet resumenesH2Tasklet) {
+            ResumenesTasklet resumenesH2Tasklet) {
         return new StepBuilder("resumenesStep", jobRepository)
                 .tasklet(resumenesH2Tasklet, transactionManager)
                 .build();
