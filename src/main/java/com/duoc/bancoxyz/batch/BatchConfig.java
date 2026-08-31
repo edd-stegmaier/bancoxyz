@@ -29,7 +29,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 import com.duoc.bancoxyz.dto.*;
 import com.duoc.bancoxyz.model.*;
 
-
 @Configuration
 public class BatchConfig {
 
@@ -46,43 +45,43 @@ public class BatchConfig {
 
     @Bean
     public FlatFileItemReader<CuentaAnualDTO> cuentasAnualesItemReader() {
-                return createReader("cuentasAnualesItemReader", archivoCuentasAnuales, cuentasAnualesValidationHelper(),
-                                CuentaAnualDTO.class,
+        return createReader("cuentasAnualesItemReader", archivoCuentasAnuales, cuentasAnualesValidationHelper(),
+                CuentaAnualDTO.class,
                 "id", "fecha", "transaccion", "monto", "descripcion");
     }
 
     @Bean
     public FlatFileItemReader<InteresDTO> interesesItemReader() {
-                return createReader("interesesItemReader", archivoIntereses, cuentasAnualesValidationHelper(),
-                                InteresDTO.class,
+        return createReader("interesesItemReader", archivoIntereses, cuentasAnualesValidationHelper(),
+                InteresDTO.class,
                 "id", "nombre", "saldo", "edad", "tipo");
     }
 
     @Bean
     public FlatFileItemReader<TransaccionDTO> transaccionesItemReader() {
-                return createReader("transaccionesItemReader", archivoTransacciones, cuentasAnualesValidationHelper(),
-                                TransaccionDTO.class,
+        return createReader("transaccionesItemReader", archivoTransacciones, cuentasAnualesValidationHelper(),
+                TransaccionDTO.class,
                 "id", "fecha", "monto", "tipo");
     }
 
-        @Bean
-        public ItemValidator cuentasAnualesValidationHelper() {
-                return new ItemValidator();
-        }
-
     @Bean
-        public CuentaAnualProcessor cuentasAnualesProcessor(ItemValidator validationHelper) {
-                return new CuentaAnualProcessor(validationHelper);
+    public ItemValidator cuentasAnualesValidationHelper() {
+        return new ItemValidator();
     }
 
     @Bean
-        public InteresProcessor interesesProcessor(ItemValidator validationHelper) {
-                return new InteresProcessor(validationHelper);
+    public CuentaAnualProcessor cuentasAnualesProcessor(ItemValidator validationHelper) {
+        return new CuentaAnualProcessor(validationHelper);
     }
 
     @Bean
-        public TransaccionProcessor transaccionesProcessor(ItemValidator validationHelper) {
-                return new TransaccionProcessor(validationHelper);
+    public InteresProcessor interesesProcessor(ItemValidator validationHelper) {
+        return new InteresProcessor(validationHelper);
+    }
+
+    @Bean
+    public TransaccionProcessor transaccionesProcessor(ItemValidator validationHelper) {
+        return new TransaccionProcessor(validationHelper);
     }
 
     @Bean
@@ -175,17 +174,34 @@ public class BatchConfig {
     }
 
     @Bean
-    public Job bankDataJob(JobRepository jobRepository,
-            Step cuentasAnualesStep,
-            Step interesesStep,
-            Step transaccionesStep,
-            Step resumenesStep) {
-        return new JobBuilder("bankDataJob", jobRepository)
+    public Job cuentasAnualesJob(JobRepository jobRepository, Step cuentasAnualesStep) {
+        return new JobBuilder("cuentasAnualesJob", jobRepository)
                 .incrementer(new RunIdIncrementer())
                 .start(cuentasAnualesStep)
-                .next(interesesStep)
-                .next(transaccionesStep)
-                .next(resumenesStep)
+                .build();
+    }
+
+    @Bean
+    public Job interesesJob(JobRepository jobRepository, Step interesesStep) {
+        return new JobBuilder("interesesJob", jobRepository)
+                .incrementer(new RunIdIncrementer())
+                .start(interesesStep)
+                .build();
+    }
+
+    @Bean
+    public Job transaccionesJob(JobRepository jobRepository, Step transaccionesStep) {
+        return new JobBuilder("transaccionesJob", jobRepository)
+                .incrementer(new RunIdIncrementer())
+                .start(transaccionesStep)
+                .build();
+    }
+
+    @Bean
+    public Job resumenesJob(JobRepository jobRepository, Step resumenesStep) {
+        return new JobBuilder("resumenesJob", jobRepository)
+                .incrementer(new RunIdIncrementer())
+                .start(resumenesStep)
                 .build();
     }
 
