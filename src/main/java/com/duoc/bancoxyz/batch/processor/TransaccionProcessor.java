@@ -1,9 +1,10 @@
-package com.duoc.bancoxyz.batch;
+package com.duoc.bancoxyz.batch.processor;
 
 import java.math.BigDecimal;
 
 import org.springframework.batch.infrastructure.item.ItemProcessor;
 
+import com.duoc.bancoxyz.batch.exception.BatchValidationException;
 import com.duoc.bancoxyz.dto.TransaccionDTO;
 import com.duoc.bancoxyz.model.Transaccion;
 
@@ -17,13 +18,16 @@ public class TransaccionProcessor implements ItemProcessor<TransaccionDTO, Trans
 
     @Override
     public Transaccion process(TransaccionDTO dto) {
-        if (dto == null || validationHelper.duplicado(dto)) {
-            return null;
+        if (dto == null) {
+            throw new BatchValidationException("Transacción nula");
+        }
+        if (validationHelper.duplicado(dto)) {
+            throw new BatchValidationException("Transacción duplicada: " + dto.getId());
         }
 
         BigDecimal monto = validationHelper.normalizeAmount(dto.getMonto());
         if (monto == null) {
-            return null;
+            throw new BatchValidationException("Monto inválido para transacción: " + dto.getId());
         }
 
         return new Transaccion(

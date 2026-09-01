@@ -1,4 +1,4 @@
-package com.duoc.bancoxyz.batch;
+package com.duoc.bancoxyz.batch.processor;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -112,28 +112,23 @@ public class ItemValidator {
     }
 
     public boolean duplicado(CuentaAnualDTO dto) {
-        return !cuentasAnualesDuplicadas.add(buildKey(dto.getId(), dto.getFecha(), dto.getTransaccion(),
-                dto.getMonto(), dto.getDescripcion()));
+        if (dto == null || dto.getId() == null) {
+            return true;
+        }
+        return !cuentasAnualesDuplicadas.add(dto.getId().toString());
     }
 
     public boolean duplicado(InteresDTO dto) {
-        return !interesesDuplicados.add(buildKey(dto.getId(), dto.getNombre(), dto.getSaldo(), dto.getEdad(),
-                dto.getTipo()));
+        if (dto == null || dto.getId() == null) {
+            return true;
+        }
+        return !interesesDuplicados.add(dto.getId().toString());
     }
 
     public boolean duplicado(TransaccionDTO dto) {
-        return !transaccionesDuplicadas.add(buildKey(dto.getId(), dto.getFecha(), dto.getMonto(), dto.getTipo()));
-    }
-
-    private String buildKey(Object... values) {
-        StringBuilder builder = new StringBuilder();
-        for (Object value : values) {
-            if (builder.length() > 0) {
-                builder.append('|');
-            }
-            builder.append(value == null ? "<null>" : value.toString().trim());
+        if (dto == null || dto.getId() <= 0) {
+            return true;
         }
-
-        return builder.toString();
+        return !transaccionesDuplicadas.add(String.valueOf(dto.getId()));
     }
 }

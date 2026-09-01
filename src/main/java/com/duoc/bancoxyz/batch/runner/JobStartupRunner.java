@@ -1,4 +1,4 @@
-package com.duoc.bancoxyz.batch;
+package com.duoc.bancoxyz.batch.runner;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -14,9 +14,11 @@ import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
+@Profile("!test")
 public class JobStartupRunner implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(JobStartupRunner.class);
@@ -55,7 +57,7 @@ public class JobStartupRunner implements ApplicationRunner {
     private List<String> resolverJobs() {
         String valor = jobsProperty == null ? "all" : jobsProperty.trim().toLowerCase(Locale.ROOT);
         if (valor.isBlank() || "all".equals(valor)) {
-            return List.of("cuentasAnualesJob", "interesesJob", "transaccionesJob", "resumenesJob");
+            return List.of("bancoxyzPipelineJob");
         }
 
         List<String> seleccion = new ArrayList<>();

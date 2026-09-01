@@ -44,12 +44,11 @@
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
 		</dependency>
 
-		<!-- JDBC 23ai + companion jars para wallet mTLS (oraclepki, etc.) -->
+		<!-- Oracle JDBC compatible con Maven Central para evitar fallas de resolución -->
 		<dependency>
 			<groupId>com.oracle.database.jdbc</groupId>
-			<artifactId>ojdbc17-production</artifactId>
-			<version>${oracle.jdbc.version}</version>
-			<type>pom</type>
+			<artifactId>ojdbc11</artifactId>
+			<version>23.3.0.23.09</version>
 		</dependency>
 
 		<!-- H2 solo para tests y perfil local de desarrollo -->

@@ -1,4 +1,4 @@
-package com.duoc.bancoxyz.batch;
+package com.duoc.bancoxyz.batch.tasklet;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;

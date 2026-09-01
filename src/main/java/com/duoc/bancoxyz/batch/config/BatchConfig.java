@@ -1,8 +1,17 @@
-package com.duoc.bancoxyz.batch;
+package com.duoc.bancoxyz.batch.config;
 
 import java.time.LocalDate;
 
 import javax.sql.DataSource;
+
+import com.duoc.bancoxyz.batch.exception.BatchValidationException;
+import com.duoc.bancoxyz.batch.listener.BatchExecutionTimeListener;
+import com.duoc.bancoxyz.batch.policy.BatchSkipPolicy;
+import com.duoc.bancoxyz.batch.processor.CuentaAnualProcessor;
+import com.duoc.bancoxyz.batch.processor.InteresProcessor;
+import com.duoc.bancoxyz.batch.processor.ItemValidator;
+import com.duoc.bancoxyz.batch.processor.TransaccionProcessor;
+import com.duoc.bancoxyz.batch.tasklet.ResumenesTasklet;
 
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.job.Job;
@@ -10,6 +19,7 @@ import org.springframework.batch.core.job.parameters.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.core.step.Step;
+import org.springframework.retry.backoff.ExponentialBackOffPolicy;
 import org.springframework.batch.infrastructure.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.infrastructure.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.batch.infrastructure.item.file.FlatFileItemReader;
@@ -23,6 +33,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.support.DefaultConversionService;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.io.Resource;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.jdbc.support.JdbcTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
 
@@ -32,7 +43,16 @@ import com.duoc.bancoxyz.model.*;
 @Configuration
 public class BatchConfig {
 
-    private static final int CHUNK_SIZE = 10;
+    private final BatchOptimizationConfig optimizationConfig;
+
+    public BatchConfig(BatchOptimizationConfig optimizationConfig) {
+        this.optimizationConfig = optimizationConfig;
+    }
+
+    @Bean
+    public BatchExecutionTimeListener batchExecutionTimeListener() {
+        return new BatchExecutionTimeListener();
+    }
 
     @Value("${bancoxyz.archivo-cuentas-anuales:classpath:data/cuentas_anuales.csv}")
     private Resource archivoCuentasAnuales;
@@ -127,12 +147,19 @@ public class BatchConfig {
             PlatformTransactionManager transactionManager,
             FlatFileItemReader<CuentaAnualDTO> cuentasAnualesItemReader,
             CuentaAnualProcessor cuentasAnualesProcessor,
-            JdbcBatchItemWriter<CuentaAnual> cuentasAnualesItemWriter) {
+            JdbcBatchItemWriter<CuentaAnual> cuentasAnualesItemWriter,
+            TaskExecutor batchTaskExecutor) {
         return new StepBuilder("cuentasAnualesStep", jobRepository)
-                .<CuentaAnualDTO, CuentaAnual>chunk(CHUNK_SIZE, transactionManager)
+                .<CuentaAnualDTO, CuentaAnual>chunk(optimizationConfig.getChunkSize(), transactionManager)
                 .reader(cuentasAnualesItemReader)
                 .processor(cuentasAnualesProcessor)
                 .writer(cuentasAnualesItemWriter)
+                .taskExecutor(batchTaskExecutor)
+                .faultTolerant()
+                .retry(BatchValidationException.class)
+                .retryLimit(optimizationConfig.getRetryLimit())
+                .backOffPolicy(exponentialBackOffPolicy())
+                .skipPolicy(new BatchSkipPolicy())
                 .build();
     }
 
@@ -141,12 +168,19 @@ public class BatchConfig {
             PlatformTransactionManager transactionManager,
             FlatFileItemReader<InteresDTO> interesesItemReader,
             InteresProcessor interesesProcessor,
-            JdbcBatchItemWriter<Interes> interesesItemWriter) {
+            JdbcBatchItemWriter<Interes> interesesItemWriter,
+            TaskExecutor batchTaskExecutor) {
         return new StepBuilder("interesesStep", jobRepository)
-                .<InteresDTO, Interes>chunk(CHUNK_SIZE, transactionManager)
+                .<InteresDTO, Interes>chunk(optimizationConfig.getChunkSize(), transactionManager)
                 .reader(interesesItemReader)
                 .processor(interesesProcessor)
                 .writer(interesesItemWriter)
+                .taskExecutor(batchTaskExecutor)
+                .faultTolerant()
+                .retry(BatchValidationException.class)
+                .retryLimit(optimizationConfig.getRetryLimit())
+                .backOffPolicy(exponentialBackOffPolicy())
+                .skipPolicy(new BatchSkipPolicy())
                 .build();
     }
 
@@ -155,12 +189,19 @@ public class BatchConfig {
             PlatformTransactionManager transactionManager,
             FlatFileItemReader<TransaccionDTO> transaccionesItemReader,
             TransaccionProcessor transaccionesProcessor,
-            JdbcBatchItemWriter<Transaccion> transaccionesItemWriter) {
+            JdbcBatchItemWriter<Transaccion> transaccionesItemWriter,
+            TaskExecutor batchTaskExecutor) {
         return new StepBuilder("transaccionesStep", jobRepository)
-                .<TransaccionDTO, Transaccion>chunk(CHUNK_SIZE, transactionManager)
+                .<TransaccionDTO, Transaccion>chunk(optimizationConfig.getChunkSize(), transactionManager)
                 .reader(transaccionesItemReader)
                 .processor(transaccionesProcessor)
                 .writer(transaccionesItemWriter)
+                .taskExecutor(batchTaskExecutor)
+                .faultTolerant()
+                .retry(BatchValidationException.class)
+                .retryLimit(optimizationConfig.getRetryLimit())
+                .backOffPolicy(exponentialBackOffPolicy())
+                .skipPolicy(new BatchSkipPolicy())
                 .build();
     }
 
@@ -170,6 +211,30 @@ public class BatchConfig {
             ResumenesTasklet resumenesH2Tasklet) {
         return new StepBuilder("resumenesStep", jobRepository)
                 .tasklet(resumenesH2Tasklet, transactionManager)
+                .build();
+    }
+
+    @Bean
+    public ExponentialBackOffPolicy exponentialBackOffPolicy() {
+        ExponentialBackOffPolicy policy = new ExponentialBackOffPolicy();
+        policy.setInitialInterval(optimizationConfig.getBackOffInitialInterval());
+        policy.setMultiplier(optimizationConfig.getBackOffMultiplier());
+        policy.setMaxInterval(optimizationConfig.getBackOffMaxInterval());
+        return policy;
+    }
+
+    @Bean
+    public Job bancoxyzPipelineJob(JobRepository jobRepository,
+            Step cuentasAnualesStep,
+            Step interesesStep,
+            Step transaccionesStep,
+            Step resumenesStep) {
+        return new JobBuilder("bancoxyzPipelineJob", jobRepository)
+                .incrementer(new RunIdIncrementer())
+                .start(cuentasAnualesStep)
+                .next(interesesStep)
+                .next(transaccionesStep)
+                .next(resumenesStep)
                 .build();
     }
 

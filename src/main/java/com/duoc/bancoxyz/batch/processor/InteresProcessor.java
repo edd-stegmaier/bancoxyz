@@ -1,9 +1,10 @@
-package com.duoc.bancoxyz.batch;
+package com.duoc.bancoxyz.batch.processor;
 
 import java.math.BigDecimal;
 
 import org.springframework.batch.infrastructure.item.ItemProcessor;
 
+import com.duoc.bancoxyz.batch.exception.BatchValidationException;
 import com.duoc.bancoxyz.dto.InteresDTO;
 import com.duoc.bancoxyz.model.Interes;
 
@@ -19,8 +20,11 @@ public class InteresProcessor implements ItemProcessor<InteresDTO, Interes> {
 
     @Override
     public Interes process(InteresDTO dto) {
-        if (dto == null || validationHelper.duplicado(dto)) {
-            return null;
+        if (dto == null) {
+            throw new BatchValidationException("Interés nulo");
+        }
+        if (validationHelper.duplicado(dto)) {
+            throw new BatchValidationException("Interés duplicado: " + dto.getId());
         }
 
         BigDecimal saldo = dto.getSaldo();
@@ -29,12 +33,12 @@ public class InteresProcessor implements ItemProcessor<InteresDTO, Interes> {
         }
 
         if (saldo.compareTo(ZERO) <= 0) {
-            return null;
+            throw new BatchValidationException("Saldo inválido para interés: " + dto.getId());
         }
 
         Integer edad = validationHelper.normalizeAge(dto.getEdad());
         if (edad == null) {
-            return null;
+            throw new BatchValidationException("Edad inválida para interés: " + dto.getId());
         }
 
         return new Interes(
