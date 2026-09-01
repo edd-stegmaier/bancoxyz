@@ -38,6 +38,3 @@ Tras la primera ejecucion puedes poner `spring.batch.jdbc.initialize-schema=neve
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=h2
 ```
 
-## Seguridad
-
-No subas el wallet ni passwords al repositorio.
